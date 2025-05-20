@@ -348,7 +348,7 @@ const Dashboard = () => {
                     <td className="py-2 px-4">
                       <button
                         onClick={() => handleDeleteFeedback(fb._id)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-600 cursor-pointer hover:text-red-800"
                         title="Delete"
                       >
                         <Trash2 size={18} />
