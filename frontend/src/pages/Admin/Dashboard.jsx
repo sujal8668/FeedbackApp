@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { UserContext } from "../../context/userContext";
 import AdminDashLayout from "../../components/layouts/AdminDashLayout";
 import axiosInstance from "../../utils/axiosInstance";
@@ -26,13 +27,7 @@ const EMOJI_COLORS = {
 };
 
 const WEEKDAY_COLORS = [
-  "#1f77b4",
-  "#9467bd",
-  "#2ca02c",
-  "#fdd0a2",
-  "#d62728",
-  "#8c564b",
-  "#ff7f0e",
+  "#1f77b4", "#9467bd", "#2ca02c", "#fdd0a2", "#d62728", "#8c564b", "#ff7f0e",
 ];
 
 const capitalizeWords = (str) =>
@@ -47,6 +42,7 @@ const Dashboard = () => {
   const [pieChartFilter, setPieChartFilter] = useState("all");
   const [barChartFilter, setBarChartFilter] = useState("all");
   const [showAllFeedbacks, setShowAllFeedbacks] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
 
   useEffect(() => {
     const fetchFeedbacks = async () => {
@@ -68,15 +64,13 @@ const Dashboard = () => {
 
   const getFilteredFeedbacks = (filter) => {
     const now = new Date();
-  
     return feedbacks.filter((fb) => {
       const fbDate = new Date(fb.createdAt);
       switch (filter) {
         case "weekly":
-          // Clone 'now' before modifying it
           const startOfWeek = new Date();
           startOfWeek.setDate(now.getDate() - now.getDay());
-          startOfWeek.setHours(0, 0, 0, 0); // Normalize to start of the day
+          startOfWeek.setHours(0, 0, 0, 0);
           return fbDate >= startOfWeek;
         case "monthly":
           return (
@@ -90,7 +84,6 @@ const Dashboard = () => {
       }
     });
   };
-  
 
   const pieChartFeedbacks = getFilteredFeedbacks(pieChartFilter);
   const barChartFeedbacks = getFilteredFeedbacks(barChartFilter);
@@ -102,9 +95,8 @@ const Dashboard = () => {
     return count > 0;
   }).map((emoji) => ({
     name: capitalizeWords(emoji),
-    value: pieChartFeedbacks.filter(
-      (fb) => fb.emoji.toLowerCase() === emoji
-    ).length,
+    value: pieChartFeedbacks.filter((fb) => fb.emoji.toLowerCase() === emoji)
+      .length,
   }));
 
   const barChartData = EMOJI_ORDER.filter((emoji) => {
@@ -114,12 +106,10 @@ const Dashboard = () => {
     return count > 0;
   }).map((emoji) => ({
     name: capitalizeWords(emoji),
-    value: barChartFeedbacks.filter(
-      (fb) => fb.emoji.toLowerCase() === emoji
-    ).length,
+    value: barChartFeedbacks.filter((fb) => fb.emoji.toLowerCase() === emoji)
+      .length,
   }));
 
-  // Weekly Peak Hour data - always uses full dataset
   const peakHourData = Array.from({ length: 24 }, (_, hour) => {
     const hourData = { hour };
     for (let i = 0; i < 7; i++) hourData[i] = 0;
@@ -137,9 +127,40 @@ const Dashboard = () => {
     ? feedbacks
     : feedbacks.slice(0, 6);
 
+  const handleDeleteFeedback = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this feedback?"))
+      return;
+    try {
+      await axiosInstance.delete(`/api/feedback/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setFeedbacks((prev) => prev.filter((fb) => fb._id !== id));
+      toast.success("Feedback deleted.");
+    } catch (error) {
+      toast.error("Failed to delete feedback.");
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    try {
+      await axiosInstance.delete(`/api/feedback/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setFeedbacks([]);
+      setShowDeleteAllModal(false);
+      toast.success("All feedbacks deleted.");
+    } catch (error) {
+      toast.error("Failed to delete all feedbacks.");
+    }
+  };
+
   return (
     <AdminDashLayout activeMenu="Dashboard">
-      <div className="p-4 md:p-6 space-y-6 ">
+      <div className="p-4 md:p-6 space-y-6">
 
         {/* Feedback Summary */}
         <div>
@@ -149,7 +170,6 @@ const Dashboard = () => {
             </h1>
             <p className="text-gray-600">Report and analysis of feedbacks.</p>
           </div>
-
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {EMOJI_ORDER.map((emoji) => {
               const count = feedbacks.filter(
@@ -163,9 +183,7 @@ const Dashboard = () => {
                   <p className="text-base md:text-lg font-semibold">
                     {capitalizeWords(emoji)}
                   </p>
-                  <p className="text-xl md:text-2xl font-semibold">
-                    {count}
-                  </p>
+                  <p className="text-xl md:text-2xl font-semibold">{count}</p>
                 </div>
               ) : null;
             })}
@@ -174,12 +192,13 @@ const Dashboard = () => {
 
         {/* Charts */}
         <div className="flex flex-col lg:flex-row gap-4">
+
           {/* Pie Chart */}
           <div className="w-full bg-white rounded-xl shadow-xl p-4">
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-lg md:text-xl font-semibold">Pie Chart</h2>
+              <h2 className="text-lg font-semibold">Pie Chart</h2>
               <select
-                className="border px-2 py-1.5 rounded text-black cursor-pointer outline-none"
+                className="border px-2 py-1 rounded-2xl outline-none cursor-pointer text-black"
                 value={pieChartFilter}
                 onChange={(e) => setPieChartFilter(e.target.value)}
               >
@@ -198,21 +217,16 @@ const Dashboard = () => {
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  label={false}
                 >
                   {pieChartData.map((entry, index) => (
                     <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        EMOJI_COLORS[entry.name.toLowerCase()] || "#8884d8"
-                      }
+                      key={index}
+                      fill={EMOJI_COLORS[entry.name.toLowerCase()] || "#8884d8"}
                     />
                   ))}
                 </Pie>
-                <Tooltip
-                  formatter={(value, name) => [value, capitalizeWords(name)]}
-                />
-                <Legend formatter={(value) => capitalizeWords(value)} />
+                <Tooltip />
+                <Legend />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -220,9 +234,9 @@ const Dashboard = () => {
           {/* Bar Chart */}
           <div className="w-full bg-white rounded-xl shadow-xl p-4">
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-lg md:text-xl font-semibold">Bar Chart</h2>
+              <h2 className="text-lg font-semibold">Bar Chart</h2>
               <select
-                className="border px-2 py-1.5 rounded text-black cursor-pointer outline-none"
+                className="border px-2 py-1 rounded-2xl outline-none cursor-pointer text-black"
                 value={barChartFilter}
                 onChange={(e) => setBarChartFilter(e.target.value)}
               >
@@ -242,10 +256,8 @@ const Dashboard = () => {
                 <Bar dataKey="value" fill="#8884d8">
                   {barChartData.map((entry, index) => (
                     <Cell
-                      key={`cell-bar-${index}`}
-                      fill={
-                        EMOJI_COLORS[entry.name.toLowerCase()] || "#8884d8"
-                      }
+                      key={index}
+                      fill={EMOJI_COLORS[entry.name.toLowerCase()] || "#8884d8"}
                     />
                   ))}
                 </Bar>
@@ -254,58 +266,35 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Weekly Peak Hour Chart */}
+        {/* Peak Hour Chart */}
         <div className="bg-white rounded-xl shadow-xl p-4">
-          <h2 className="text-lg md:text-xl font-semibold mb-8">
+          <h2 className="text-lg font-semibold mb-4">
             Weekly Peak Hour Feedback Data
           </h2>
-          <div className="flex flex-wrap justify-center gap-3 mb-4">
-            {[
-              "Sunday",
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday",
-            ].map((day, idx) => (
-              <div key={idx} className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-3 justify-center mb-4">
+            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, i) => (
+              <div key={i} className="flex items-center gap-2">
                 <div
                   className="w-4 h-4 rounded"
-                  style={{ backgroundColor: WEEKDAY_COLORS[idx] }}
-                ></div>
-                <span className="text-sm md:text-base">{day}</span>
+                  style={{ backgroundColor: WEEKDAY_COLORS[i] }}
+                />
+                <span>{day}</span>
               </div>
             ))}
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={peakHourData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="hour"
-                label={{
-                  value: "Hour (0–23)",
-                  position: "insideBottom",
-                  offset: -5,
-                }}
-              />
+              <XAxis dataKey="hour" label={{ value: "Hour (0–23)", position: "insideBottom", offset: -5 }} />
               <YAxis allowDecimals={false} />
               <Tooltip />
-              {Array.from({ length: 7 }).map((_, day) => (
+              {Array.from({ length: 7 }).map((_, i) => (
                 <Bar
-                  key={day}
-                  dataKey={String(day)}
+                  key={i}
+                  dataKey={String(i)}
                   stackId="a"
-                  fill={WEEKDAY_COLORS[day]}
-                  name={[
-                    "Sunday",
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                  ][day]}
+                  fill={WEEKDAY_COLORS[i]}
+                  name={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][i]}
                 />
               ))}
             </BarChart>
@@ -318,14 +307,22 @@ const Dashboard = () => {
             <h2 className="text-lg md:text-xl font-semibold">
               Recent Feedbacks
             </h2>
-            {feedbacks.length > 6 && (
+            <div className="flex gap-2">
               <button
-                className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-md cursor-pointer"
-                onClick={() => setShowAllFeedbacks((prev) => !prev)}
+                className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md cursor-pointer"
+                onClick={() => setShowDeleteAllModal(true)}
               >
-                {showAllFeedbacks ? "Show Less" : "Show More"}
+                Delete All
               </button>
-            )}
+              {feedbacks.length > 6 && (
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-md cursor-pointer"
+                  onClick={() => setShowAllFeedbacks((prev) => !prev)}
+                >
+                  {showAllFeedbacks ? "Show Less" : "Show More"}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -335,17 +332,27 @@ const Dashboard = () => {
                   <th className="py-2 px-4 border-b">User Name</th>
                   <th className="py-2 px-4 border-b">Emoji</th>
                   <th className="py-2 px-4 border-b">Date</th>
+                  <th className="py-2 px-4 border-b">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedFeedbacks.map((fb) => (
-                  <tr key={fb._id} className="border-t">
+                  <tr key={fb._id} className="border-t hover:bg-gray-100">
                     <td className="py-2 px-4">
                       {fb.user?.name || "Unknown User"}
                     </td>
                     <td className="py-2 px-4">{capitalizeWords(fb.emoji)}</td>
                     <td className="py-2 px-4">
                       {new Date(fb.createdAt).toLocaleString()}
+                    </td>
+                    <td className="py-2 px-4">
+                      <button
+                        onClick={() => handleDeleteFeedback(fb._id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -361,9 +368,37 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Delete All Modal */}
+        {showDeleteAllModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white rounded-lg p-6 shadow-lg w-11/12 max-w-sm">
+              <h2 className="text-lg font-semibold mb-4">Confirm Deletion</h2>
+              <p className="mb-6 text-gray-700">
+                Are you sure you want to delete all feedbacks?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  className="bg-gray-300 cursor-pointer text-black px-4 py-2 rounded hover:bg-gray-400"
+                  onClick={() => setShowDeleteAllModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="bg-red-600 cursor-pointer text-white px-4 py-2 rounded hover:bg-red-700"
+                  onClick={handleDeleteAll}
+                >
+                  Delete All
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminDashLayout>
   );
 };
 
 export default Dashboard;
+
+
+

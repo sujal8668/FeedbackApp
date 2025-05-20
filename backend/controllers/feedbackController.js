@@ -38,8 +38,40 @@ const getAllFeedback = async (req, res) => {
     const feedbacks = await Feedback.find().populate("user", "name email");
     res.status(200).json(feedbacks);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch feedback", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch feedback", error: error.message });
   }
 };
 
-module.exports = { submitFeedback, getAllFeedback };
+const deleteFeedback = async (req, res) => {
+  try {
+    const feedback = await Feedback.findByIdAndDelete(req.params.id);
+    if (!feedback) {
+      return res.status(404).json({ message: "Feedback not found." });
+    }
+    res.status(200).json({ message: "Feedback deleted." });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error deleting feedback", error: error.message });
+  }
+};
+
+const deleteAllFeedbacks = async (req, res) => {
+  try {
+    await Feedback.deleteMany();
+    res.status(200).json({ message: "All feedbacks deleted." });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error deleting all feedbacks", error: error.message });
+  }
+};
+
+module.exports = {
+  submitFeedback,
+  getAllFeedback,
+  deleteFeedback,
+  deleteAllFeedbacks,
+};
