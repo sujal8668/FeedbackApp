@@ -26,7 +26,7 @@
 👤 **Sujal Parmar**
 
 - GitHub: [@sujal8668](https://github.com/sujal8668)
-- LinkedIn: [@Sujal Parmar](https://www.linkedin.com/in/sujal-parmar-5246882b8/)
+- LinkedIn: [@Sujal Parmar](https://www.linkedin.com/in/sujal-parmar-748204355/)
 
 
 ##  Show support ⭐️
